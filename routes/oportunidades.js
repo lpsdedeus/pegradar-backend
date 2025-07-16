@@ -11,7 +11,7 @@ router.get('/oportunidades', (req, res) => {
       apr: 1810.9,
       spread: 34.73,
       tempo: '7 dias',
-      estimatedGasFeeUSD: 4.50, // Simulado
+      estimatedGasFeeUSD: 4.50
     },
     {
       par: 'LUSD/USDC',
@@ -20,13 +20,16 @@ router.get('/oportunidades', (req, res) => {
       apr: 820.3,
       spread: 12.11,
       tempo: '5 dias',
-      estimatedGasFeeUSD: 3.20,
+      estimatedGasFeeUSD: 3.20
     }
   ];
 
   const oportunidadesComLucro = oportunidades.map((op) => {
     const lucroLiquido = ((op.spread / 100) * 1000) - op.estimatedGasFeeUSD;
-    return { ...op, lucroLiquido: lucroLiquido.toFixed(2) };
+    return {
+      ...op,
+      lucroLiquido: lucroLiquido.toFixed(2)
+    };
   });
 
   res.json({ sucesso: true, oportunidades: oportunidadesComLucro });
