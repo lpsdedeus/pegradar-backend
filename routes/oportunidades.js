@@ -1,38 +1,46 @@
 const express = require('express');
 const router = express.Router();
 
-// Simulação de oportunidades reais de redeem assets
-router.get('/oportunidades', (req, res) => {
-  const oportunidades = [
-    {
-      par: 'CADC/USDC',
-      origem: 'Redeem na Maple Finance',
-      destino: 'Venda na Uniswap',
-      apr: 1810.9,
-      spread: 34.73,
-      tempo: '7 dias',
-      estimatedGasFeeUSD: 4.50
-    },
-    {
-      par: 'LUSD/USDC',
-      origem: 'Redeem na Liquity',
-      destino: 'Venda na Curve',
-      apr: 820.3,
-      spread: 12.11,
-      tempo: '5 dias',
-      estimatedGasFeeUSD: 3.20
-    }
-  ];
+router.get('/', async (req, res) => {
+  try {
+    const oportunidades = [
+      {
+        par: "CADC/USDC",
+        origem: "Redeem no Maple Finance",
+        destino: "Venda na Uniswap",
+        apr: 1810.90,
+        spread: 34.73,
+        tempo: "7 dias",
+        estimatedGasFeeUSD: 8.5,
+        lucroLiquido: "322.73"
+      },
+      {
+        par: "FIDU/USDC",
+        origem: "Redeem na Goldfinch",
+        destino: "Swap na Curve",
+        apr: 17641.04,
+        spread: 338.32,
+        tempo: "7 dias",
+        estimatedGasFeeUSD: 6.9,
+        lucroLiquido: "310.20"
+      },
+      {
+        par: "ibEUR/USDC",
+        origem: "Redeem na Iron Bank",
+        destino: "Venda na Balancer",
+        apr: 1313661246.11,
+        spread: 25193503.35,
+        tempo: "7 dias",
+        estimatedGasFeeUSD: 10.1,
+        lucroLiquido: "500.00"
+      }
+    ];
 
-  const oportunidadesComLucro = oportunidades.map((op) => {
-    const lucroLiquido = ((op.spread / 100) * 1000) - op.estimatedGasFeeUSD;
-    return {
-      ...op,
-      lucroLiquido: lucroLiquido.toFixed(2)
-    };
-  });
-
-  res.json({ sucesso: true, oportunidades: oportunidadesComLucro });
+    res.json({ sucesso: true, oportunidades });
+  } catch (erro) {
+    console.error("Erro ao buscar oportunidades:", erro.message);
+    res.status(500).json({ sucesso: false, mensagem: "Erro ao buscar oportunidades" });
+  }
 });
 
 module.exports = router;
