@@ -1,20 +1,18 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
+
+const loginRouter = require('./routes/login');             // assume login em routes/login.js
+const oportunidadesRouter = require('./routes/oportunidades');
 
 app.use(cors());
 app.use(express.json());
 
-app.post('/api/login', (req, res) => {
-  const { email, senha } = req.body;
-  if (email === 'lsdedeus@hotmail.com' && senha === '564988') {
-    return res.json({ sucesso: true, mensagem: 'Bem-vindo!' });
-  }
-  res.status(401).json({ sucesso: false, mensagem: 'Login inválido' });
-});
-
-const oportunidadesRouter = require('./routes/oportunidades');
+// monta /api/login
+app.use('/api/login', loginRouter);
+// monta /api/oportunidades
 app.use('/api/oportunidades', oportunidadesRouter);
 
 app.listen(PORT, () => {
