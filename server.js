@@ -1,16 +1,14 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-
-const loginRoutes = require('./routes/login');
-const oportunidadesRoutes = require('./routes/oportunidades');
-
 const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+const loginRoute = require('./routes/login');
+const oportunidadesRoute = require('./routes/oportunidades');
 
-app.use('/api', loginRoutes);
-app.use('/api', oportunidadesRoutes);
+app.use(cors());
+app.use(express.json());
+
+app.use('/api/login', loginRoute);
+app.use('/api/oportunidades', oportunidadesRoute);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
