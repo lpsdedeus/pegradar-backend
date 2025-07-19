@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import fetch from 'node-fetch';
 import { OrderBookApi, SupportedChainId } from '@cowprotocol/cow-sdk';
 
 const app = express();
@@ -12,28 +13,34 @@ app.get('/api/arbitrage', async (req, res) => {
     const chainId = SupportedChainId.MAINNET;
     const api = new OrderBookApi({ chainId });
 
-    // Obtém todos os tokens disponíveis
-    const tokens = await api.getTokens();
-    const tokenList = tokens.tokens;
+    // Buscar tokens pela API pública
+    const response = await fetch('https://api.cow.fi/mainnet/api/v1/tokens');
+    const tokensData = await response.json();
+    const tokens = tokensData.tokens; // Array de tokens
 
     const results = [];
 
-    for (const sellToken of Object.keys(tokenList)) {
-      for (const buyToken of Object.keys(tokenList)) {
-        if (sellToken === buyToken) continue;
+    for (const sellToken of tokens) {
+      for (const buyToken of tokens) {
+        if (sellToken.address === buyToken.address) continue;
 
         try {
           const sellAmount = '1000000000000000000'; // 1 token (ajuste se necessário)
-          const quote = await api.getQuote({ sellToken, buyToken, sellAmount });
+          const quote = await api.getQuote({ sellToken: sellToken.address, buyToken: buyToken.address, sellAmount });
           const price = parseFloat(quote.buyAmount) / parseFloat(quote.sellAmount);
-          const midPrice = await api.getNativePrice(sellToken, buyToken);
+          const midPrice = await api.getNativePrice(sellToken.address, buyToken.address);
           const spread = ((midPrice - price) / midPrice) * 100;
 
           if (spread > 0.5) {
-            results.push({ sellToken, buyToken, spread: spread.toFixed(2), price });
+            results.push({
+              sellToken: sellToken.symbol,
+              buyToken: buyToken.symbol,
+              spread: spread.toFixed(2),
+              price: price.toFixed(6)
+            });
           }
         } catch (error) {
-          // ignora erros de pares inválidos
+          // Ignorar pares sem cotação possível
         }
       }
     }
