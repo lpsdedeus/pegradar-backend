@@ -7,7 +7,7 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "@cowprotocol/cow-sdk": "^1.5.2",
+    "@cowprotocol/cow-sdk": "latest",
     "express": "^4.18.2",
     "cors": "^2.8.5"
   }
