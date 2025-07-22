@@ -1,54 +1,65 @@
-// backend/arbitrageMonitor.js
+const axios = require('axios');
 
-const axios = require('axios'); const fs = require('fs');
+// Lista de tokens alvo
+const trackedTokens = [
+  { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' },
+  { symbol: 'wBTC', address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599' },
+  { symbol: 'ETH', address: '0x0000000000000000000000000000000000000000' }, // ETH nativo
+  { symbol: 'wstETH', address: '0x7f39c581f595b53c5cb19bb5ee0d8d93c6cb3f9c' },
+  { symbol: 'cbETH', address: '0xbe9895146f7af43049ca1c1ae358b0541ea49704' },
+  { symbol: 'XUSD', address: '0x247AAdE801A1cB3dF1aCbda1cF40451d3a45B7F1' } // Exemplo, confirme endereço real
+];
 
-const STABLE_KEYWORDS = ['usd', 'usdc', 'usdt', 'dai', 'xusd', 'yusd', 'savusd', 'slvlusd', 'tacusd']; const BTC_KEYWORDS = ['btc', 'cbeth', 'cbeth', 'cbbtc', 'tbcbtc', 'tacbtc']; const ETH_KEYWORDS = ['eth', 'taceth', 'ezeth', 'weeth', 'wsteth', 'teth'];
+// Configuração da API LI.FI
+const API_URL = 'https://li.quest/v1/quote';
+const chains = ['ethereum', 'arbitrum', 'optimism', 'polygon', 'base', 'avalanche'];
 
-const CHECK_INTERVAL = 30 * 1000; // 30 segundos const MIN_PROFIT_THRESHOLD = 0.01; // 1% mínimo de lucro const LI_FI_API = 'https://li.quest/v1/routes';
+async function checkArbitrage() {
+  try {
+    for (let i = 0; i < chains.length; i++) {
+      for (let j = 0; j < chains.length; j++) {
+        if (i === j) continue;
 
-async function fetchChains() { const res = await axios.get('https://li.quest/v1/chains'); return res.data.chains.map(c => c.id); }
+        const fromChain = chains[i];
+        const toChain = chains[j];
 
-function isRelevantToken(token) { const symbol = token.symbol?.toLowerCase() || ''; return STABLE_KEYWORDS.some(k => symbol.includes(k)) || BTC_KEYWORDS.some(k => symbol.includes(k)) || ETH_KEYWORDS.some(k => symbol.includes(k)); }
+        for (const token of trackedTokens) {
+          const params = {
+            fromChain,
+            toChain,
+            fromToken: token.address,
+            toToken: token.address,
+            fromAmount: '100000000', // 0.1 unidade com 6 ou 18 decimais dependendo do token
+            slippage: 0.5
+          };
 
-function formatOpportunity(route) { const from = route.fromToken; const to = route.toToken; return { buy_token: from.symbol, buy_chain: route.fromChain.name, buy_token_address: from.address, sell_token: to.symbol, sell_chain: route.toChain.name, sell_token_address: to.address, estimated_profit_pct: (((route.toAmountUSD - route.fromAmountUSD) / route.fromAmountUSD) * 100).toFixed(2) }; }
+          const url = `${API_URL}?${new URLSearchParams(params).toString()}`;
+          const response = await axios.get(url);
 
-async function checkArbitrage() { try { const chains = await fetchChains(); const opportunities = [];
+          if (response.data.estimate && response.data.estimate.toAmountMin) {
+            const fromAmount = parseFloat(params.fromAmount) / 1e6;
+            const toAmount = parseFloat(response.data.estimate.toAmountMin) / 1e6;
+            const profit = toAmount - fromAmount;
 
-for (const fromChain of chains) {
-  for (const toChain of chains) {
-    if (fromChain === toChain) continue;
-
-    const url = `${LI_FI_API}?fromChain=${fromChain}&toChain=${toChain}&fromAmount=1000000000000000000`;
-    const { data } = await axios.get(url);
-
-    if (!data.routes) continue;
-
-    for (const route of data.routes) {
-      const fromToken = route.fromToken;
-      const toToken = route.toToken;
-
-      if (isRelevantToken(fromToken) && isRelevantToken(toToken)) {
-        const profitPct = (route.toAmountUSD - route.fromAmountUSD) / route.fromAmountUSD;
-        if (profitPct >= MIN_PROFIT_THRESHOLD) {
-          opportunities.push(formatOpportunity(route));
+            if (profit > 0.5) {
+              console.log(`🤑 Arbitragem encontrada: ${token.symbol} | ${fromChain.toUpperCase()} → ${toChain.toUpperCase()}`);
+              console.log(`➡️ Lucro estimado: ${profit.toFixed(4)} ${token.symbol}`);
+              console.log('---');
+            }
+          }
         }
       }
     }
+  } catch (err) {
+    console.error('❌ Erro ao verificar arbitragem:', err.message);
   }
 }
 
-if (opportunities.length > 0) {
-  const timestamp = new Date().toISOString();
-  const log = { timestamp, opportunities };
-  fs.writeFileSync('arbitrage-log.json', JSON.stringify(log, null, 2));
-  console.log(`[${timestamp}] ⚡ ${opportunities.length} oportunidades encontradas!`);
-} else {
-  console.log(`[${new Date().toISOString()}] Sem oportunidades no momento.`);
+// Exporta função para ser usada no server.js
+function runMonitor() {
+  console.log('✅ Monitor de arbitragem iniciado...');
+  checkArbitrage(); // Roda uma vez ao iniciar
+  setInterval(checkArbitrage, 5 * 60 * 1000); // Roda a cada 5 minutos
 }
 
-} catch (error) { console.error('Erro ao buscar rotas:', error.message); } }
-
-setInterval(checkArbitrage, CHECK_INTERVAL);
-
-checkArbitrage();
-
+module.exports = { runMonitor };
