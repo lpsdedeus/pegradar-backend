@@ -1,6 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const { runMonitor } = require('./service/arbitrageMonitor');
+const arbitrageMonitor = require('./services/arbitrageMonitor');
 
 dotenv.config();
 
