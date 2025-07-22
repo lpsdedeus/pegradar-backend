@@ -1,13 +1,25 @@
 {
-  "name": "lifi-arbitrage-monitor",
+  "name": "pegradar-backend",
   "version": "1.0.0",
+  "description": "Monitoramento de arbitragem cross-chain via LI.FI",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "axios": "^1.6.7",
+    "axios": "^1.6.8",
     "dotenv": "^16.3.1"
-  }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "arbitragem",
+    "cross-chain",
+    "defi",
+    "lifi"
+  ],
+  "author": "Lucas de Deus",
+  "license": "MIT"
 }
