@@ -1,65 +1,81 @@
+// services/arbitrageMonitor.js
 import axios from 'axios';
 
-const LI_API = 'https://li.quest/v1/token';
-const ROUTES_API = 'https://li.quest/v1/routes';
+// Lista base de tokens relacionados a USD, BTC, ETH e suas variantes
+const tokenKeywords = ['usd', 'btc', 'eth', 'steth', 'weth', 'usdc', 'usdt', 'xusd', 'yusd', 'ezeth', 'weeth', 'savusd', 'tacusd', 'taceth', 'tacbtc', 'slvlusd', 'wsteth', 'wsteth-2'];
 
-const stableKeywords = ['usd', 'usdc', 'usdt', 'xusd', 'savusd', 'tacusd', 'slvlusd', 'yusd'];
-const ethKeywords = ['eth', 'weth', 'taceth', 'wsteth', 'ezeth', 'weeth'];
-const btcKeywords = ['btc', 'cbeth', 'wbtc', 'tacbtc'];
+const chains = [
+  'ethereum', 'arbitrum', 'polygon', 'optimism', 'base', 'avalanche',
+  'bsc', 'gnosis', 'fantom', 'zksync', 'linea', 'scroll', 'mantle'
+];
 
-const keywordMatch = (symbol, keywords) =>
-  keywords.some((k) => symbol.toLowerCase().includes(k.toLowerCase()));
+const LI_FI_API = 'https://li.quest/v1';
 
-export async function monitorArbitrage() {
-  const chains = ['ETH', 'POL', 'ARB', 'OP', 'BASE', 'AVAX', 'BSC', 'ZKSYNC'];
-  const amount = '1000000000000000000'; // 1 ETH em wei
+async function getTokenList(chain) {
+  try {
+    const res = await axios.get(`${LI_FI_API}/tokens?chain=${chain}`);
+    return res.data.tokens || [];
+  } catch (error) {
+    console.error(`❌ Erro ao buscar tokens da chain ${chain}:`, error.message);
+    return [];
+  }
+}
 
-  for (const fromChain of chains) {
-    for (const toChain of chains) {
-      if (fromChain === toChain) continue;
+function isRelevantToken(token) {
+  return token.symbol && tokenKeywords.some(keyword =>
+    token.symbol.toLowerCase().includes(keyword)
+  );
+}
 
-      try {
-        const tokenList = await axios.get(`${LI_API}?chain=${fromChain}`);
-        const filtered = tokenList.data.tokens.filter((token) => {
-          const symbol = token.symbol.toLowerCase();
-          return (
-            keywordMatch(symbol, stableKeywords) ||
-            keywordMatch(symbol, ethKeywords) ||
-            keywordMatch(symbol, btcKeywords)
-          );
-        });
-
-        for (const token of filtered) {
-          try {
-            const routeUrl = `${ROUTES_API}?fromChain=${fromChain}&toChain=${toChain}&fromToken=${token.address}&toToken=${token.address}&fromAmount=${amount}&slippage=1`;
-            const res = await axios.get(routeUrl);
-
-            const route = res.data.routes?.[0];
-            if (!route) continue;
-
-            const output = parseFloat(route.toAmountUSD || 0);
-            const input = parseFloat(route.fromAmountUSD || 0);
-
-            const profit = output - input;
-            const pctGain = (profit / input) * 100;
-
-            if (pctGain > 0.3) {
-              console.log('🚨 Arbitragem detectada:');
-              console.log(`💰 Token: ${token.symbol}`);
-              console.log(`🔄 Comprar em: ${fromChain}`);
-              console.log(`💸 Vender em: ${toChain}`);
-              console.log(`📈 Lucro estimado: ${pctGain.toFixed(2)}%`);
-              console.log(`🧾 Contrato origem: ${token.address}`);
-              console.log(`🧾 Contrato destino: ${token.address}`);
-              console.log('----------------------------');
-            }
-          } catch (e) {
-            // ignora erros de rota
-          }
-        }
-      } catch (err) {
-        console.error(`Erro ao buscar tokens em ${fromChain}:`, err.message);
+function generateTokenPairs(tokensA, tokensB) {
+  const pairs = [];
+  for (const tokenA of tokensA) {
+    for (const tokenB of tokensB) {
+      if (tokenA.symbol !== tokenB.symbol) {
+        pairs.push({ fromToken: tokenA, toToken: tokenB });
       }
     }
   }
+  return pairs;
+}
+
+async function checkArbitrageOpportunity(fromChain, toChain, fromToken, toToken) {
+  try {
+    const url = `${LI_FI_API}/quote?fromChain=${fromChain}&toChain=${toChain}&fromToken=${fromToken.address}&toToken=${toToken.address}&fromAmount=1000000000000000000`;
+    const res = await axios.get(url);
+    const result = res.data;
+
+    const toAmount = Number(result.estimate?.toAmount || 0);
+    const expectedAmount = 1e18;
+
+    if (toAmount > expectedAmount * 1.01) {
+      console.log(`💰 Arbitragem encontrada:\n🔄 Comprar ${fromToken.symbol} na ${fromChain} e vender ${toToken.symbol} na ${toChain}`);
+      console.log(`📍 Contratos: ${fromToken.address} → ${toToken.address}`);
+      console.log(`📈 Estimado: Recebe ${(toAmount / 1e18).toFixed(4)} ${toToken.symbol}\n`);
+    }
+  } catch (error) {
+    if (error?.response?.status !== 400) {
+      console.error(`⚠️ Erro no quote ${fromChain} → ${toChain}:`, error.message);
+    }
+  }
+}
+
+export default async function monitorArbitrage() {
+  for (const fromChain of chains) {
+    const fromTokens = (await getTokenList(fromChain)).filter(isRelevantToken);
+
+    for (const toChain of chains) {
+      if (fromChain === toChain) continue;
+
+      const toTokens = (await getTokenList(toChain)).filter(isRelevantToken);
+
+      const pairs = generateTokenPairs(fromTokens, toTokens).slice(0, 5); // Limita para testes
+
+      for (const { fromToken, toToken } of pairs) {
+        await checkArbitrageOpportunity(fromChain, toChain, fromToken, toToken);
+      }
+    }
+  }
+
+  console.log('✅ Monitoramento finalizado.\n');
 }
