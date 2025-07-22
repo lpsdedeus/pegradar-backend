@@ -1,16 +1,18 @@
-// server.js (na raiz)
 const express = require('express');
-const app = express();
-const port = process.env.PORT || 3000;
-
 const runMonitor = require('./service/arbitrageMonitor');
 
-app.get('/', (req, res) => {
-  res.send('Monitor de arbitragem rodando...');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Rota simples só para satisfazer o Render
+app.get('/status', (req, res) => {
+  res.send('✅ PegRadar monitor rodando com sucesso!');
 });
 
-app.listen(port, () => {
-  console.log(`Servidor escutando na porta ${port}`);
-  // Inicia o monitor assim que o servidor subir
-  runMonitor(); 
+// Inicia o servidor
+app.listen(PORT, () => {
+  console.log(`🟢 WebService ativo na porta ${PORT}`);
+  
+  // Inicia o monitor de arbitragem no background
+  runMonitor();
 });
