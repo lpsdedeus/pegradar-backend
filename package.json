@@ -1,25 +1,23 @@
 {
   "name": "pegradar-backend",
   "version": "1.0.0",
-  "description": "Monitoramento de arbitragem cross-chain via LI.FI",
-  "main": "index.js",
-  "type": "module",
+  "description": "Monitor de arbitragem cross-chain usando LI.FI",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "axios": "^1.6.8",
-    "dotenv": "^16.3.1"
-  },
-  "engines": {
-    "node": ">=18"
+    "start": "node server.js"
   },
   "keywords": [
     "arbitragem",
-    "cross-chain",
-    "defi",
-    "lifi"
+    "crypto",
+    "lifi",
+    "backend"
   ],
   "author": "Lucas de Deus",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
 }
